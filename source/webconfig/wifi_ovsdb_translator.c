@@ -420,6 +420,20 @@ void vif_config_ovs_schema_dump(const struct schema_Wifi_VIF_Config *vif)
     return;
 }
 
+static inline char* print_acs_configs()
+{
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d SREESH num_radios %d\n", __func__, __LINE__,
+        webconfig_ovsdb_data.u.decoded.num_radios);
+    for (unsigned int i = 0; i < webconfig_ovsdb_data.u.decoded.num_radios; i++) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,
+            "%s:%d SREESH radio %u and webconfig_ovsdb_data autochannelenabled = %d and "
+            "webconfig_ovsdb_default_data autochannelenabled = %d\n",
+            __func__, __LINE__, i, webconfig_ovsdb_data.u.decoded.radios[i].oper.autoChannelEnabled,
+            webconfig_ovsdb_default_data.u.decoded.radios[i].oper.autoChannelEnabled);
+    }
+    return NULL;
+}
+
 void vif_state_ovs_schema_dump(const struct schema_Wifi_VIF_State *vif)
 {
     int i = 0;
@@ -791,7 +805,7 @@ void get_translator_config_wpa_oftags(
 
 webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
 {
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d SREESH Enter\n", __func__, __LINE__);
     webconfig_subdoc_decoded_data_t *decoded_params, *default_decoded_params;
     wifi_hal_capability_t *hal_cap, *default_hal_cap;
     unsigned int i = 0;
@@ -1020,11 +1034,13 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             continue;
         }
         oper_param = &decoded_params->radios[radioIndx].oper;
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH Value of radio index = %d and value of autochannelenabled = %d and static ovsdb default autochannelenabled = %d\n",__func__,__LINE__, radioIndx, oper_param->autoChannelEnabled, default_decoded_params->radios[radioIndx].oper.autoChannelEnabled);
         memcpy(&default_decoded_params->radios[radioIndx].oper, oper_param,
             sizeof(wifi_radio_operationParam_t));
         strncpy(default_decoded_params->radios[radioIndx].name,
             decoded_params->radios[radioIndx].name,
             sizeof(default_decoded_params->radios[radioIndx].name));
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH I have memcpy the structure to default ovsdb. Now, the ovsdb value of radio index = %d and value of ovsdb default autochannelenabled = %d\n",__func__,__LINE__, radioIndx, default_decoded_params->radios[radioIndx].oper.autoChannelEnabled);
         default_decoded_params->radios[radioIndx].vaps.vap_map.num_vaps =
             decoded_params->hal_cap.wifi_prop.radiocap[i].maxNumberVAPs;
     }
@@ -1122,7 +1138,7 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
     // rdk_wifi_radio_state change is added to avoid redundant config update from ovsm
     // this redundant update is triggered as part of ovsm config table update
     rdk_wifi_radio_t *rdk_wifi_radio_state;
-    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: OVSM encode subdoc type %d\n", __func__, __LINE__,
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: SREESH OVSM encode subdoc type %d\n", __func__, __LINE__,
         type);
 
     pthread_mutex_lock(&webconfig_data_lock);
@@ -1138,16 +1154,15 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
         pthread_mutex_unlock(&webconfig_data_lock);
         return webconfig_error_encode;
     }
-
     memcpy(rdk_wifi_radio_state, webconfig_ovsdb_data.u.decoded.radios,
         (MAX_NUM_RADIOS * sizeof(rdk_wifi_radio_t)));
     clone_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios,
         webconfig_ovsdb_data.u.decoded.radios, rdk_wifi_radio_state);
-
+    print_acs_configs();
     // Here webconfig_ovsdb_data's decoded_params will be updated.
     if (webconfig_encode(config, &webconfig_ovsdb_data, type) != webconfig_error_none) {
         *str = NULL;
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: OVSM encode failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: SREESH OVSM encode failed\n", __func__, __LINE__);
         free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
         free(rdk_wifi_radio_state);
         pthread_mutex_unlock(&webconfig_data_lock);
@@ -1162,7 +1177,7 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
     // Here new decoded_params will be compared with the old rdk_wifi_radio_state
     // for configuration change
     if (is_ovs_vif_config_changed(type, &webconfig_ovsdb_data, rdk_wifi_radio_state) == false) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No change in config for subdoc type : %d\n",
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: SREESH No change in config for subdoc type : %d\n",
             __func__, __LINE__, type);
         *str = NULL;
         free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
@@ -1175,7 +1190,8 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
     *str = webconfig_ovsdb_raw_data_ptr;
     free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
     free(rdk_wifi_radio_state);
-
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: SREESH OVSM encode done and calling print_acs_configs\n", __func__, __LINE__);
+    print_acs_configs();
     pthread_mutex_unlock(&webconfig_data_lock);
 
     return webconfig_error_none;
@@ -1187,6 +1203,9 @@ webconfig_error_t webconfig_ovsdb_decode(webconfig_t *config, const char *str,
     pthread_mutex_lock(&webconfig_data_lock);
     webconfig_ovsdb_data.u.decoded.external_protos = (webconfig_external_ovsdb_t *)data;
     webconfig_ovsdb_data.descriptor = webconfig_data_descriptor_translate_to_ovsdb;
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: SREESH Calling OVSM decode subdoc type %d and calling print_acs_configs\n", __func__, __LINE__,
+        webconfig_ovsdb_data.type);
+    print_acs_configs();
 
     if (webconfig_decode(config, &webconfig_ovsdb_data, str) != webconfig_error_none) {
         //        *data = NULL;
@@ -1195,11 +1214,12 @@ webconfig_error_t webconfig_ovsdb_decode(webconfig_t *config, const char *str,
         return webconfig_error_decode;
     }
 
-    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: OVSM decode subdoc type %d sucessfully\n",
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: SREESH OVSM decode subdoc type %d sucessfully\n",
         __func__, __LINE__, webconfig_ovsdb_data.type);
     *type = webconfig_ovsdb_data.type;
     debug_external_protos(&webconfig_ovsdb_data, __func__, __LINE__);
     webconfig_data_free(&webconfig_ovsdb_data);
+    print_acs_configs();
     pthread_mutex_unlock(&webconfig_data_lock);
     return webconfig_error_none;
 }
@@ -1563,6 +1583,7 @@ webconfig_error_t translate_radio_obj_to_ovsdb_radio_state(const wifi_radio_oper
         return webconfig_error_translate_to_ovsdb;
     }
 
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH Radio Index = %d autochannelenabled is %d channel_mode = %s\n",__func__,__LINE__, radio_index, oper_param->autoChannelEnabled, row->channel_mode);
     if (channel_mode_conversion((BOOL *)&oper_param->autoChannelEnabled, row->channel_mode, sizeof(row->channel_mode), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Channel mode conversion failed. autoChannelEnabled %d\n", __func__, __LINE__, oper_param->autoChannelEnabled);
         return webconfig_error_translate_to_ovsdb;
@@ -1658,6 +1679,7 @@ webconfig_error_t translate_radio_obj_to_ovsdb(const wifi_radio_operationParam_t
         return webconfig_error_translate_to_ovsdb;
     }
 
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH Radio Index = %d oper_param->autoChannelEnabled %d channel mode = %s\n", __func__, __LINE__, radio_index, oper_param->autoChannelEnabled, row->channel_mode);
     if (channel_mode_conversion((BOOL *)&oper_param->autoChannelEnabled, row->channel_mode, sizeof(row->channel_mode), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: channel mode conversion failed. autoChannelEnabled %d\n", __func__, __LINE__, oper_param->autoChannelEnabled);
         return webconfig_error_translate_to_ovsdb;
@@ -1711,7 +1733,7 @@ extern int wifi_hal_get_default_wps_pin(char *pin);
 
 webconfig_error_t   translate_radio_object_to_ovsdb_radio_config_for_mesh_sta(webconfig_subdoc_data_t *data)
 {
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Enter\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: SREESH Enter\n", __func__, __LINE__);
 
     //Note : schema_Wifi_Radio_Config will be replaced to schema_Wifi_Radio_Config, after we link to the ovs headerfile
     const struct schema_Wifi_Radio_Config **table;
@@ -1759,6 +1781,7 @@ webconfig_error_t   translate_radio_object_to_ovsdb_radio_config_for_mesh_sta(we
         }
 
         oper_param = &decoded_params->radios[radio_index].oper;
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH Value of radio_index is %d and autoChannelEnabled is %d\n",__func__,__LINE__, radio_index, oper_param->autoChannelEnabled);
 
         row = (struct schema_Wifi_Radio_Config *)table[radio_index];
 
@@ -1781,6 +1804,7 @@ webconfig_error_t   translate_radio_object_to_ovsdb_radio_config_for_mesh_sta(we
     hal_cap = &decoded_params->hal_cap;
     memcpy(&webconfig_ovsdb_data.u.decoded.hal_cap, hal_cap, sizeof(wifi_hal_capability_t));
 
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH Calling translator_ovsdb_init below\n",__func__,__LINE__);
     translator_ovsdb_init(data);
 
     for (i= 0; i < decoded_params->num_radios; i++) {
@@ -1790,7 +1814,9 @@ webconfig_error_t   translate_radio_object_to_ovsdb_radio_config_for_mesh_sta(we
             continue;
         }
         oper_param = &decoded_params->radios[radio_index].oper;
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH Value of radio_index is %d and oper_param->autochannelEnabled is %d and webconfig_ovsdb_data.u.decoded autochannelenabled is %d\n",__func__,__LINE__, radio_index, oper_param->autoChannelEnabled, webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled);
         memcpy(&webconfig_ovsdb_data.u.decoded.radios[radio_index].oper, oper_param, sizeof(wifi_radio_operationParam_t));
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH After memcpy Value of radio index = %d and webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled is %d and decoded_params->radios[radio_index].oper.autoChannelEnabled is %d\n",__func__,__LINE__, radio_index, webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled, decoded_params->radios[radio_index].oper.autoChannelEnabled);
         strncpy(webconfig_ovsdb_data.u.decoded.radios[radio_index].name, decoded_params->radios[radio_index].name,  sizeof(webconfig_ovsdb_data.u.decoded.radios[radio_index].name));
         webconfig_ovsdb_data.u.decoded.radios[radio_index].vaps.vap_map.num_vaps = decoded_params->hal_cap.wifi_prop.radiocap[i].maxNumberVAPs;
     }
@@ -1868,6 +1894,7 @@ webconfig_error_t   translate_radio_object_to_ovsdb_radio_config_for_dml(webconf
     hal_cap = &decoded_params->hal_cap;
     memcpy(&webconfig_ovsdb_data.u.decoded.hal_cap, hal_cap, sizeof(wifi_hal_capability_t));
 
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH Calling translator_ovsdb_init below\n",__func__,__LINE__);
     translator_ovsdb_init(data);
 
     for (i= 0; i < decoded_params->num_radios; i++) {
@@ -1877,7 +1904,9 @@ webconfig_error_t   translate_radio_object_to_ovsdb_radio_config_for_dml(webconf
             continue;
         }
         oper_param = &decoded_params->radios[radio_index].oper;
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d:SREESH radio_index %d oper_param->autoChannelEnabled %d and webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled %d\n", __func__, __LINE__, radio_index, oper_param->autoChannelEnabled, webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled);
         memcpy(&webconfig_ovsdb_data.u.decoded.radios[radio_index].oper, oper_param, sizeof(wifi_radio_operationParam_t));
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH After memcpy oper_param->autoChannelEnabled %d and webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled %d\n",__func__,__LINE__, oper_param->autoChannelEnabled, webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled);
         strncpy(webconfig_ovsdb_data.u.decoded.radios[radio_index].name, decoded_params->radios[radio_index].name,  sizeof(webconfig_ovsdb_data.u.decoded.radios[radio_index].name));
         memcpy(&webconfig_ovsdb_default_data.u.decoded.radios[radio_index].vaps.vap_map, &decoded_params->radios[radio_index].vaps.vap_map , sizeof(wifi_vap_info_map_t));
         webconfig_ovsdb_default_data.u.decoded.radios[radio_index].vaps.num_vaps = decoded_params->radios[radio_index].vaps.num_vaps;
@@ -5294,25 +5323,28 @@ webconfig_error_t translate_radio_object_from_ovsdb(const struct schema_Wifi_Rad
     wifi_freq_bands_t band_enum;
     wifi_countrycode_type_t country_code;
     wifi_channelBandwidth_t ht_mode_enum;
+    int radio_index = 0;
 
     if ((row == NULL) || (oper_param == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input params is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
-
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH Value of oper_param->autoChannelEnabled = %d oper_param = %p oper_param->autoChannelEnabled = %p before band_enum\n",__func__,__LINE__,oper_param->autoChannelEnabled, oper_param, &oper_param->autoChannelEnabled);
     //Update the values of oper_param
     if (freq_band_conversion(&band_enum, (char *)row->freq_band, sizeof(row->freq_band), STRING_TO_ENUM) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: frequency band conversion failed. freq_band '%s'\n", __func__, __LINE__, row->freq_band);
         return webconfig_error_translate_from_ovsdb;
     }
     oper_param->band = band_enum;
+    convert_freq_band_to_radio_index(band_enum, &radio_index);
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH Value of oper_param->autoChannelEnabled = %d OVSDB ACS = %d after band_enum\n",__func__,__LINE__,oper_param->autoChannelEnabled, webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled);
 
     if (country_code_conversion(&country_code, (char *)row->country, sizeof(row->country), STRING_TO_ENUM) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: country conversion failed. country '%s'\n", __func__, __LINE__, row->country);
         return webconfig_error_translate_from_ovsdb;
     }
     oper_param->countryCode = country_code;
-
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH Value of oper_param->autoChannelEnabled = %d OVSDB ACS = %d after country_code_conversion\n",__func__,__LINE__,oper_param->autoChannelEnabled, webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled);
     //As part of southbound variant will not be updated
     /*
       if (hw_mode_conversion(&oper_param->variant, (char *)row->hw_mode, sizeof(row->hw_mode), STRING_TO_ENUM) != RETURN_OK) {
@@ -5325,7 +5357,9 @@ webconfig_error_t translate_radio_object_from_ovsdb(const struct schema_Wifi_Rad
         return webconfig_error_translate_from_ovsdb;
     }
     oper_param->channelWidth = ht_mode_enum;
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH Value of oper_param->autoChannelEnabled = %d OVSDB ACS = %d after ht_mode_conversion\n",__func__,__LINE__,oper_param->autoChannelEnabled, webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled);
 
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH radio_index = %d and channel_mode = %s and oper_param->autoChannelEnabled = %d\n",__func__,__LINE__,radio_index,row->channel_mode,oper_param->autoChannelEnabled);
     if (channel_mode_conversion(&oper_param->autoChannelEnabled, (char *)row->channel_mode, sizeof(row->channel_mode), STRING_TO_ENUM) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: channel mode conversion failed. channel_mode '%s'\n", __func__, __LINE__, row->channel_mode);
         return webconfig_error_translate_from_ovsdb;
@@ -5398,6 +5432,9 @@ webconfig_error_t   translate_radio_object_from_ovsdb_radio_config_for_dml(webco
         }
 
         oper_param = &decoded_params->radios[radio_index].oper;
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH radio_index = %u webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled = %d and oper_param->autoChannelEnabled = %d oper_param = %p and oper_param->autoChannelEnabled = %p\n",__func__,__LINE__,radio_index,webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled, oper_param->autoChannelEnabled, oper_param, &oper_param->autoChannelEnabled);
+        sleep(10);
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH(after sleep) radio_index = %u webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled = %d and oper_param->autoChannelEnabled = %d oper_param = %p and oper_param->autoChannelEnabled = %p\n",__func__,__LINE__,radio_index,webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled, oper_param->autoChannelEnabled, oper_param, &oper_param->autoChannelEnabled);
 
         if (translate_radio_object_from_ovsdb(row, oper_param, &decoded_params->hal_cap.wifi_prop) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to translate ovsdb to radio_object for %d\n", __func__, __LINE__, radio_index);
@@ -5499,8 +5536,7 @@ webconfig_error_t   translate_radio_object_from_ovsdb_radio_config_for_radio(web
     wifi_radio_operationParam_t  *oper_param;
     webconfig_external_ovsdb_t *proto;
     unsigned int presence_mask = 0;
-    rdk_wifi_radio_t *radio;
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Enter\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: SREESH Enter address of webconfig_ovsdb_data = %p and webconfig_subdoc_data_t is %p\n", __func__, __LINE__, &webconfig_ovsdb_data, data);
 
     // From ovsdb structure to webconfig
     decoded_params = &data->u.decoded;
@@ -5523,7 +5559,7 @@ webconfig_error_t   translate_radio_object_from_ovsdb_radio_config_for_radio(web
 
     presence_mask = 0;
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: radio_config_row_count %d\n", __func__, __LINE__, proto->radio_config_row_count);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: SREESH radio_config_row_count %d\n", __func__, __LINE__, proto->radio_config_row_count);
     if (proto->radio_config_row_count <  MIN_NUM_RADIOS || proto->radio_config_row_count > MAX_NUM_RADIOS) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Radio object not present\n", __func__, __LINE__);
         return webconfig_error_invalid_subdoc;
@@ -5543,11 +5579,10 @@ webconfig_error_t   translate_radio_object_from_ovsdb_radio_config_for_radio(web
             return webconfig_error_translate_from_ovsdb;
         }
 
-        radio = &decoded_params->radios[radio_index];
-
-        oper_param = &radio->oper;
-
-        convert_radio_index_to_radio_name(radio_index, radio->name);
+        oper_param = &decoded_params->radios[radio_index].oper;
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH radio_index = %u webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled = %d and oper_param->autoChannelEnabled = %d oper_param = %p and oper_param->autoChannelEnablde = %p\n",__func__,__LINE__,radio_index,webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled, oper_param->autoChannelEnabled, oper_param, &oper_param->autoChannelEnabled);
+        sleep(10);
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d SREESH(after sleep) radio_index = %u webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled = %d and oper_param->autoChannelEnabled = %d oper_param = %p and oper_param->autoChannelEnablde = %p\n",__func__,__LINE__,radio_index,webconfig_ovsdb_data.u.decoded.radios[radio_index].oper.autoChannelEnabled, oper_param->autoChannelEnabled, oper_param, &oper_param->autoChannelEnabled);
         if (translate_radio_object_from_ovsdb(row, oper_param, &decoded_params->hal_cap.wifi_prop) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to translate ovsdb to radio_object for %d\n", __func__, __LINE__, radio_index);
             return webconfig_error_translate_from_ovsdb;
@@ -7597,11 +7632,11 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_null(webconfig_
 webconfig_error_t   translate_to_ovsdb_tables(webconfig_subdoc_type_t type, webconfig_subdoc_data_t *data)
 {
     if (data == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Input data is NULL\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: SREESH Input data is NULL\n", __func__, __LINE__);
         return webconfig_error_invalid_subdoc;
     }
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: subdoc_type:%d\n", __func__, __LINE__, type);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: SREESH subdoc_type:%d\n", __func__, __LINE__, type);
     switch (type) {
         case webconfig_subdoc_type_private:
             if (translate_vap_object_to_ovsdb_vif_state(data, "private_ssid") != webconfig_error_none) {

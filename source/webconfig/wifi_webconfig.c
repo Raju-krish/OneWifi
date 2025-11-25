@@ -61,6 +61,16 @@ webconfig_error_t webconfig_encode(webconfig_t *config, webconfig_subdoc_data_t 
     data->type = type;
     data->descriptor |= webconfig_data_descriptor_decoded;
 
+    if (type == webconfig_subdoc_type_radio)
+    {
+        wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d SREESH num_radios %d\n", __func__, __LINE__,
+                data->u.decoded.num_radios);
+        for (unsigned int i = 0; i < data->u.decoded.num_radios; i++) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,
+                    "%s:%d SREESH radio %u and webconfig_subdoc_data_t autochannelenabled = %d\n",
+                    __func__, __LINE__, i, data->u.decoded.radios[i].oper.autoChannelEnabled);
+        }
+    }
     return webconfig_set(config, data);
 }
 
