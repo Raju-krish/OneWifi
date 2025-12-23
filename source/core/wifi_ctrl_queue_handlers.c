@@ -2461,6 +2461,7 @@ void process_dfs_rfc(bool type)
                 l_radio->radarInfo.timestamp = 0;
             }
             pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+	    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Triggering wifi_hal_setRadioOperatingParameters\n", __func__, __LINE__);
             ret = wifi_hal_setRadioOperatingParameters(rIdx, radio_params);
             if (ret != RETURN_OK) {
                 wifi_util_error_print(WIFI_CTRL,"%s: wifi radio parameter set failure\n",__FUNCTION__);
@@ -2494,6 +2495,7 @@ void process_dfs_atbootup_rfc(bool type)
             pthread_mutex_lock(&g_wifidb->data_cache_lock);
             radio_params->DfsEnabledBootup = type;
             pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+	    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Triggering wifi_hal_setRadioOperatingParameters\n", __func__, __LINE__);
             ret = wifi_hal_setRadioOperatingParameters(rIdx, radio_params);
             if (ret != RETURN_OK) {
                 wifi_util_error_print(WIFI_CTRL,"%s: wifi radio parameter set failure\n",__FUNCTION__);
@@ -2529,7 +2531,7 @@ int enable_wifi_radio_ax_mode(unsigned int radio_index, wifi_radio_operationPara
         }
     }
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
-
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Triggering wifi_hal_setRadioOperatingParameters\n", __func__, __LINE__);
     ret = wifi_hal_setRadioOperatingParameters(radio_index, radio_params);
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d wifi radio[%d] parameter set[%d] failure\n",__func__, __LINE__, radio_index, radio_params->variant);
@@ -2916,7 +2918,7 @@ static int reset_radio_operating_parameters(void *args)
         wifi_util_error_print(WIFI_CTRL,"%s:%d: wrong index for radio map: %d\n",__FUNCTION__, __LINE__, radio_index);
         return RETURN_ERR;
     }
-
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Triggering wifi_hal_setRadioOperatingParameters\n", __func__, __LINE__);
     ret = wifi_hal_setRadioOperatingParameters(radio_index, radio_params);
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d: wifi radio parameter set failure: radio_index:%d\n",
@@ -3176,6 +3178,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         if (wifi_radio_operationParam_validation(&g_wifidb->hal_cap, &temp_radio_params) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d: received invalid channel: %d bw: %d from driver on radio %d\n",
                 __FUNCTION__, __LINE__, ch_chg->channel, ch_chg->channelWidth, ch_chg->radioIndex);
+	    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Triggering wifi_hal_setRadioOperatingParameters\n", __func__, __LINE__);
             ret = wifi_hal_setRadioOperatingParameters(ch_chg->radioIndex, radio_params);
             if (ret != RETURN_OK) {
                 wifi_util_error_print(WIFI_CTRL,"%s:%d: wifi radio parameter set failure: radio_index:%d\n",

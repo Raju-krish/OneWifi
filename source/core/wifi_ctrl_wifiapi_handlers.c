@@ -770,6 +770,7 @@ void process_wifiapi_command(char *command, unsigned int len)
         }
         //validation and check for changes?
         //call hal_api
+	wifi_util_dbg_print(WIFI_CTRL,"%s:%d Triggering wifi_hal_setRadioOperatingParameters\n", __func__, __LINE__);
         ret = wifi_hal_setRadioOperatingParameters(radio_index, &(data.u.decoded.radios[radio_index].oper));
         if (ret != RETURN_OK) {
             sprintf(buff, "%s: wifi_hal_setRadioOperatingParameters failed", args[0]);

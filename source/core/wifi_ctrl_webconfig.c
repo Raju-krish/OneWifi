@@ -2166,7 +2166,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                     __func__, __LINE__, radio_data->name);
                 return RETURN_ERR;
             }
-
+	    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Triggering wifi_hal_setRadioOperatingParameters\n", __func__, __LINE__);
             ret = wifi_hal_setRadioOperatingParameters(mgr_radio_data->vaps.radio_index, &radio_data->oper);
 
             if (ret != RETURN_OK) {
@@ -2341,7 +2341,7 @@ int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
                 __LINE__, radio_data->name);
             return RETURN_ERR;
         }
-
+	wifi_util_dbg_print(WIFI_CTRL,"%s:%d Triggering wifi_hal_setRadioOperatingParameters\n", __func__, __LINE__);
         ret = wifi_hal_setRadioOperatingParameters(mgr_radio_data->vaps.radio_index,
             &radio_data->oper);
 

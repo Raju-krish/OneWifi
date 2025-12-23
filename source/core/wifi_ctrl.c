@@ -105,6 +105,7 @@ static int wifi_radio_set_enable(bool status)
         memcpy(&temp_wifi_radio_oper_param, wifi_radio_oper_param, sizeof(wifi_radio_operationParam_t));
         temp_wifi_radio_oper_param.enable = status;
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d index: %d radio enable status:%d\n", __func__, __LINE__, index, status);
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Triggering wifi_hal_setRadioOperatingParameters\n", __func__, __LINE__);
         ret = wifi_hal_setRadioOperatingParameters(index, &temp_wifi_radio_oper_param);
         if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d wifi radio parameter set failure: radio_index:%d\n", __func__, __LINE__, index);
@@ -520,6 +521,7 @@ int start_radios(rdk_dev_mode_type_t mode, unsigned int radio_index)
         if ((wifi_radio_oper_param->EcoPowerDown == false) && (wifi_prop->radio_presence[index] == false)) {
             wifi_util_error_print(WIFI_CTRL,"%s: !!!!-ALERT-!!!-Radio not present-!!!-Kernel driver interface down-!!!.Index %d\n",__FUNCTION__, index);
         }
+	wifi_util_dbg_print(WIFI_CTRL,"%s:%d Triggering wifi_hal_setRadioOperatingParameters\n", __func__, __LINE__);
         ret = wifi_hal_setRadioOperatingParameters(index, wifi_radio_oper_param);
         if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s: wifi radio parameter set failure: radio_index:%d\n",__FUNCTION__, index);
@@ -1334,7 +1336,8 @@ void channel_change_callback(wifi_channel_change_event_t radio_channel_param)
     memset(&channel_change, 0, sizeof(channel_change));
 
     memcpy(&channel_change, &radio_channel_param, sizeof(wifi_channel_change_event_t));
-
+    
+    wifi_util_info_print(WIFI_CTRL, "[RAJA] %s:%d triggering wifi_event_type_hal_ind \n", __func__, __LINE__);
     push_event_to_ctrl_queue((wifi_channel_change_event_t *)&channel_change, sizeof(wifi_channel_change_event_t), wifi_event_type_hal_ind, wifi_event_hal_channel_change, NULL);
     return;
 }
@@ -3365,7 +3368,7 @@ static int switch_dfs_channel(void *arg)
     wifi_radio_oper_param->channel = dfs_channel_data->dfs_channel;
     wifi_util_info_print(WIFI_CTRL, "%s:%d Switching to dfs_chan:%d \n", __func__, __LINE__,
         dfs_channel_data->dfs_channel);
-
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Triggering wifi_hal_setRadioOperatingParameters\n", __func__, __LINE__);
     if (wifi_hal_setRadioOperatingParameters(dfs_channel_data->radio_index,
             wifi_radio_oper_param)) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: setRadioOperating Parameters failed \n", __func__,
