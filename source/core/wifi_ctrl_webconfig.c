@@ -140,8 +140,10 @@ int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
     /* If Device operating in POD mode, Send the blaster status as new to the cloud */
     if (ctrl->network_mode == rdk_dev_mode_type_ext) {
         wifi_util_info_print(WIFI_CTRL, "%s %d POD MOde Activated. Sending Blaster status to cloud\n", __func__, __LINE__);
+    	wifi_util_info_print(WIFI_CTRL, "%s %d [RAJA] Before send_blaster_status\n", __func__, __LINE__);
         mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_init_rsp_pending;
         webconfig_send_blaster_status(ctrl);
+    	wifi_util_info_print(WIFI_CTRL, "%s %d [RAJA] After send_blaster_status\n", __func__, __LINE__);
     }
     else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
             wifi_util_info_print(WIFI_CTRL, "GW doesnot dependant on MQTT topic\n");
@@ -408,6 +410,7 @@ int webconfig_send_full_associate_status(wifi_ctrl_t *ctrl)
 /* This function is responsible for encoding the data and trigger bus call */
 int webconfig_send_blaster_status(wifi_ctrl_t *ctrl)
 {
+    wifi_util_info_print(WIFI_CTRL, "%s %d [RAJA] Just entering the func\n", __func__, __LINE__);
     webconfig_subdoc_data_t *data = NULL;
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
@@ -426,11 +429,13 @@ int webconfig_send_blaster_status(wifi_ctrl_t *ctrl)
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
     memcpy((unsigned char *)&data->u.decoded.blaster, (unsigned char *)&mgr->blaster_config_global, sizeof(active_msmt_t));
 
+    wifi_util_info_print(WIFI_CTRL, "%s %d [RAJA] Before webconfig_encode\n", __func__, __LINE__);
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_blaster) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
     } else {
         webconfig_data_free(data);
     }
+    wifi_util_info_print(WIFI_CTRL, "%s %d [RAJA] After webconfig_encode\n", __func__, __LINE__);
 
     free(data);
     data = NULL;

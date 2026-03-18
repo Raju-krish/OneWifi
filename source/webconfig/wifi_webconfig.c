@@ -200,6 +200,7 @@ webconfig_error_t webconfig_set(webconfig_t *config, webconfig_subdoc_data_t *da
     }
 
     if ((data->descriptor & webconfig_data_descriptor_decoded) == webconfig_data_descriptor_decoded) {
+    	wifi_util_info_print(WIFI_CTRL, "%s %d [RAJA] Goes for translate_to_subdoc\n", __func__, __LINE__);
         if ((err = doc->translate_to_subdoc(config, data)) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Subdocument translation failed\n", __func__, __LINE__);
         } else if ((err = doc->encode_subdoc(config, data)) != webconfig_error_none) {

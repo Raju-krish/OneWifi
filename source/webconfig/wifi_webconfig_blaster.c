@@ -58,12 +58,15 @@ webconfig_error_t translate_from_blaster_subdoc(webconfig_t *config, webconfig_s
 
 webconfig_error_t translate_to_blaster_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
+    wifi_util_info_print(WIFI_CTRL, "%s %d [RAJA] Just entering the func\n", __func__, __LINE__);
       if ((data->descriptor & webconfig_data_descriptor_translate_from_ovsdb) == webconfig_data_descriptor_translate_from_ovsdb) {
+    	wifi_util_info_print(WIFI_CTRL, "%s %d [RAJA] Calling translate_from\n", __func__, __LINE__);
           if (config->proto_desc.translate_from(webconfig_subdoc_type_blaster, data) != webconfig_error_none) {
               wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Translate to Blaster subdoc failed\n", __func__, __LINE__);
               return webconfig_error_translate_from_ovsdb;
           }
       }
+    wifi_util_info_print(WIFI_CTRL, "%s %d [RAJA] exiting the func\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 
@@ -73,6 +76,7 @@ webconfig_error_t encode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_da
     cJSON *obj;
     char *str;
     webconfig_subdoc_decoded_data_t *params;
+    wifi_util_info_print(WIFI_CTRL, "%s %d [RAJA] Just entering the func\n", __func__, __LINE__);
 
     if (data == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL data Pointer\n", __func__, __LINE__);
@@ -97,11 +101,13 @@ webconfig_error_t encode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_da
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(json, "Parameters", obj);
 
+    wifi_util_info_print(WIFI_CTRL, "%s %d [RAJA] Above encode_blaster_object\n", __func__, __LINE__);
     if (encode_blaster_object(&params->blaster, obj) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi blaster config\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
     str = cJSON_Print(json);
+    wifi_util_info_print(WIFI_CTRL, "%s %d [RAJA] After encode_blaster_object\n", __func__, __LINE__);
 
     data->u.encoded.raw = (webconfig_subdoc_encoded_raw_t)calloc(strlen(str) + 1, sizeof(char));
     if (data->u.encoded.raw == NULL) {
@@ -132,7 +138,7 @@ webconfig_error_t decode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_da
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL json pointer\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
-
+    wifi_util_info_print(WIFI_CTRL, "%s %d [RAJA] Before decode_blaster_config\n", __func__, __LINE__);
     memset(&params->blaster, 0, sizeof(active_msmt_t));
     obj_config = cJSON_GetObjectItem(json, "Parameters");
     if (decode_blaster_object(obj_config, &params->blaster) != webconfig_error_none) {
@@ -141,6 +147,7 @@ webconfig_error_t decode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_da
         wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
+    wifi_util_info_print(WIFI_CTRL, "%s %d [RAJA] After decode_blaster_config\n", __func__, __LINE__);
     cJSON_Delete(json);
     wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decode success\n", __func__, __LINE__);
     return webconfig_error_none;
