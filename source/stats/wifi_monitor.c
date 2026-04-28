@@ -3443,6 +3443,36 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
         return 0;
     }
 
+    /*
+     * FC_WEP=0 DHCP stall recovery:
+     *
+     * If the STA is still active and has no IP, send a disassoc to force a
+     * fresh re-association so the client re-runs the 4-way handshake and
+     * sends its DHCP frames correctly with FC_WEP=1.
+     */
+    {
+        char ip[64] = {0};
+        char iface[IFNAMSIZ] = {0};
+        bool has_ip = (csi_getClientIpAddress(src_mac, ip, iface, 1) == 0);
+
+        wifi_util_info_print(WIFI_MON, "%s:%d client[%s] reason=%d has_ipv4=%d\n", __func__, __LINE__, src_mac, reason, has_ip);
+	if(reason == WLAN_FC_WEP_BIT_MISSING && has_ip)
+	{
+        	wifi_util_info_print(WIFI_MON, "%s:%d having IP and FE_WEB case so don't disassoc\n", __func__, __LINE__);
+		return 0;
+	}
+       /* if (!has_ip) {
+            mac_address_t sta_mac_bytes;
+            str_to_mac_bytes(src_mac, sta_mac_bytes);
+            wifi_util_info_print(WIFI_MON,
+                "%s:%d [FC_WEP recovery] client %s on ap%d is associated "
+                "but has no IP — sending disassoc to force re-association\n",
+                __func__, __LINE__, src_mac, ap_index);
+            wifi_hal_disassoc(ap_index, WLAN_REASON_PREV_AUTH_NOT_VALID, sta_mac_bytes);
+            return 0;
+        }*/
+    }
+
     memset(&assoc_data, 0, sizeof(assoc_dev_data_t));
     assoc_data.dev_stats.cli_MACAddress[0] = mac_addr[0]; assoc_data.dev_stats.cli_MACAddress[1] = mac_addr[1];
     assoc_data.dev_stats.cli_MACAddress[2] = mac_addr[2]; assoc_data.dev_stats.cli_MACAddress[3] = mac_addr[3];

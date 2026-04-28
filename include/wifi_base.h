@@ -1032,7 +1032,8 @@ typedef struct {
 
 typedef enum {
     WLAN_RADIUS_GREYLIST_REJECT=100,
-    PREFER_PRIVATE_RFC_REJECT=101
+    PREFER_PRIVATE_RFC_REJECT=101,
+    WLAN_FC_WEP_BIT_MISSING=102
 } acl_entry_reason_t;
 
 typedef struct {
