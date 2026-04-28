@@ -2783,6 +2783,21 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
     if ((ap_reason_code(ap_index, src_mac, dest_mac, type, reason)) != 0) {
        wifi_util_dbg_print(WIFI_MON,"%s:%d failed in getting the reason code details as mac is null \n", __func__, __LINE__);
     }
+
+    /* FC_WEP=0 handling: disconnect the client immediately on event regardless of IP state.
+     * We must NOT push monitor/ctrl disconnect events because the STA has not actually
+     * disconnected from the AP; this forces a clean re-association.
+     */
+    if (reason == WIFI_REASON_FC_WEP_BIT_MISSING) {
+        mac_address_t sta_mac_bytes;
+        str_to_mac_bytes(src_mac, sta_mac_bytes);
+        wifi_util_info_print(WIFI_MON,
+            "%s:%d [FC_WEP] client[%s] on ap%d — sending disassoc\n",
+            __func__, __LINE__, src_mac, ap_index);
+        wifi_hal_disassoc(ap_index, WLAN_REASON_PREV_AUTH_NOT_VALID, sta_mac_bytes);
+        return 0;
+    }
+
     if (reason == WLAN_RADIUS_GREYLIST_REJECT) {
         wifi_util_dbg_print(WIFI_MON,"Device disassociated due to Greylist\n");
         greylist_data.reason = reason;
