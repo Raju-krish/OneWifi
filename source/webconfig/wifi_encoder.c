@@ -1232,7 +1232,7 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         return webconfig_error_none;
     }
 
-    if (security_info->mfp != wifi_mfp_cfg_optional &&
+    if (security_info->mfp == wifi_mfp_cfg_disabled &&
         security_info->mode == wifi_security_mode_wpa3_transition) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid MFP value %d for %d mode\n", __func__,
             __LINE__, security_info->mfp, security_info->mode);

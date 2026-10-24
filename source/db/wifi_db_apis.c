@@ -2705,7 +2705,7 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
 
     convert_security_mode_string_to_integer(&mfp,(char *)&pcfg->mfp_config);
     sec->mfp = (wifi_mfp_cfg_t)mfp;
-    if ((sec->mode == wifi_security_mode_wpa3_transition) && (sec->mfp != wifi_mfp_cfg_optional)) {
+    if ((sec->mode == wifi_security_mode_wpa3_transition) && (sec->mfp == wifi_mfp_cfg_disabled)) {
         wifi_util_error_print(WIFI_DB, "%s:%d Invalid MFP Config\n", __func__, __LINE__);
         sec->mfp = wifi_mfp_cfg_optional;
     } else if (((sec->mode == wifi_security_mode_wpa3_enterprise) || (sec->mode == wifi_security_mode_enhanced_open) || (sec->mode == wifi_security_mode_wpa3_personal)) && (sec->mfp != wifi_mfp_cfg_required)) {
@@ -9869,7 +9869,7 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
             (security_mfp != wifi_mfp_cfg_required)) {
             wifi_util_error_print(WIFI_MGR, "%s:%d Using default security mode 0x%x and MFP %d for %s\n", \
                                   __func__, __LINE__, bss_cfg->security.mode, bss_cfg->security.mfp, vap_config->vap_name);
-        } else if ((security_mode == wifi_security_mode_wpa3_transition) && (security_mfp != wifi_mfp_cfg_optional)) {
+        } else if ((security_mode == wifi_security_mode_wpa3_transition) && (security_mfp == wifi_mfp_cfg_disabled)) {
             wifi_util_error_print(WIFI_MGR, "%s:%d Using default security mode 0x%x and MFP %d for %s\n", \
                                   __func__, __LINE__, bss_cfg->security.mode, bss_cfg->security.mfp, vap_config->vap_name);
         } else {
