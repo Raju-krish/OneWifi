@@ -990,8 +990,9 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
     static int sync_retries = 0;
 
     if (!ctrl->ctrl_initialized) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Ctrl not initialized skip request.\n", __FUNCTION__,
-            __LINE__);
+        wifi_util_info_print(WIFI_CTRL,
+            "%s:%d: Data.Init rejected: ctrl_initialized=0 network_mode=%d\n", __FUNCTION__,
+            __LINE__, ctrl->network_mode);
         return bus_error_invalid_operation;
     }
     
@@ -1005,6 +1006,15 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
         if ((sync_retries < MAX_ACSD_SYNC_TIME_WAIT)) {
             if ((is_acs_channel_updated(num_of_radios) == false) ||
                 (check_wifi_radio_sched_timeout_active_status(ctrl) == true)) {
+                for (unsigned int index = 0; index < num_of_radios; index++) {
+                    int radio_sched_id = ctrl->wifi_sched_id.wifi_radio_sched_handler_id[index];
+                    if (ctrl->acs_pending[index] || radio_sched_id != 0) {
+                        wifi_util_info_print(WIFI_CTRL,
+                            "%s:%d: Data.Init blocked radio:%u acs_pending:%d radio_sched_id:%d\n",
+                            __FUNCTION__, __LINE__, index, ctrl->acs_pending[index],
+                            radio_sched_id);
+                    }
+                }
                 sync_retries++;
                 wifi_util_info_print(WIFI_CTRL,
                     "%s:%d: sync_retries=%d wifidb and global radio config not updated\n",
@@ -1020,10 +1030,16 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
             return bus_error_invalid_operation;
         }
         wifi_util_info_print(WIFI_CTRL,
-            "%s:%d: sync_retries=%d wifidb and global radio config updated\n", __FUNCTION__,
-            __LINE__, sync_retries);
+            "%s:%d: Data.Init proceeding sync_retries=%d retry_gate_bypassed=%d\n", __FUNCTION__,
+            __LINE__, sync_retries, sync_retries >= MAX_ACSD_SYNC_TIME_WAIT);
         for (unsigned int index = 0; index < num_of_radios; index++) {
             if (ctrl->acs_pending[index] == true) {
+                if (sync_retries >= MAX_ACSD_SYNC_TIME_WAIT) {
+                    wifi_util_info_print(WIFI_CTRL,
+                        "%s:%d: Data.Init retry-limit fallback radio:%u acs_pending=1 radio_sched_id:%d\n",
+                        __FUNCTION__, __LINE__, index,
+                        ctrl->wifi_sched_id.wifi_radio_sched_handler_id[index]);
+                }
                 ctrl->acs_pending[index] = false;
             }
         }
@@ -1061,6 +1077,14 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
     } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
         if (check_wifi_radio_sched_timeout_active_status(ctrl) == true) {
             wifi_util_dbg_print(WIFI_CTRL, "%s wifidb and cache are not synced!\n", __FUNCTION__);
+            for (unsigned int index = 0; index < num_of_radios; index++) {
+                int radio_sched_id = ctrl->wifi_sched_id.wifi_radio_sched_handler_id[index];
+                if (radio_sched_id != 0) {
+                    wifi_util_info_print(WIFI_CTRL,
+                        "%s:%d: Data.Init blocked radio:%u radio_sched_id:%d\n", __FUNCTION__,
+                        __LINE__, index, radio_sched_id);
+                }
+            }
             free(data);
             data = NULL;
             return bus_error_invalid_operation;

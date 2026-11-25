@@ -3588,6 +3588,11 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d channel change on radio:%d old channel:%d new channel:%d channel change event type:%d \
                             radar_event_type %d op_class:%d\n", __func__, __LINE__, ch_chg->radioIndex, radio_params->channel,
                             ch_chg->channel, ch_chg->event, ch_chg->sub_event, ch_chg->op_class);
+    wifi_util_info_print(WIFI_CTRL,
+        "%s:%d: processing channel-change event radio:%d event:%d sub_event:%d old_channel:%d new_channel:%d old_width:%d new_width:%d op_class:%d\n",
+        __func__, __LINE__, ch_chg->radioIndex, ch_chg->event, ch_chg->sub_event,
+        radio_params->channel, ch_chg->channel, radio_params->channelWidth,
+        ch_chg->channelWidth, ch_chg->op_class);
 
     stop_wifi_sched_timer(ch_chg->radioIndex, ctrl, wifi_csa_sched);
     stop_wifi_sched_timer(ch_chg->radioIndex, ctrl, wifi_acs_sched);

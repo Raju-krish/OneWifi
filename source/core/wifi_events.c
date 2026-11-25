@@ -782,6 +782,11 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
   
     if (!is_limit_reached || is_high_priority_event(sub_type)) {
         queue_push(ctrl->queue, event);
+        if (type == wifi_event_type_hal_ind && sub_type == wifi_event_hal_channel_change) {
+            wifi_util_info_print(WIFI_CTRL,
+                "%s:%d: queued HAL channel-change event queue_depth:%u\n", __func__,
+                __LINE__, queue_count(ctrl->queue));
+        }
         pthread_cond_signal(&ctrl->cond);
         pthread_mutex_unlock(&ctrl->queue_lock);
     } else {

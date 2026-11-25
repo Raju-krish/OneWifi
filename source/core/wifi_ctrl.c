@@ -311,6 +311,11 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     time_t  time_diff;
     int rc = 0;
     wifi_event_t *event = NULL;
+    bool first_scheduler_pass = true;
+
+    wifi_util_info_print(WIFI_CTRL,
+        "%s:%d: controller queue loop entered ctrl_initialized:%d poll_period:%u\n",
+        __func__, __LINE__, ctrl->ctrl_initialized, ctrl->poll_period);
 
     pthread_mutex_lock(&ctrl->queue_lock);
     while (ctrl->exit_ctrl == false) {
@@ -344,6 +349,16 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                         break;
 
                     case wifi_event_type_hal_ind:
+                        if (event->sub_type == wifi_event_hal_channel_change &&
+                            event->u.core_data.msg != NULL) {
+                            wifi_channel_change_event_t *channel_event =
+                                (wifi_channel_change_event_t *)event->u.core_data.msg;
+                            wifi_util_info_print(WIFI_CTRL,
+                                "%s:%d: processing HAL channel-change event radio:%d event:%d sub_event:%d channel:%d width:%d\n",
+                                __func__, __LINE__, channel_event->radioIndex, channel_event->event,
+                                channel_event->sub_event, channel_event->channel,
+                                channel_event->channelWidth);
+                        }
                         handle_hal_indication(ctrl, event->u.core_data.msg, event->u.core_data.len, event->sub_type);
                         break;
 
@@ -377,6 +392,12 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                 pthread_mutex_lock(&ctrl->queue_lock);
             }
         } else if (rc == ETIMEDOUT) {
+            if (first_scheduler_pass) {
+                wifi_util_info_print(WIFI_CTRL,
+                    "%s:%d: first controller scheduler pass poll_period:%u\n", __func__,
+                    __LINE__, ctrl->poll_period);
+                first_scheduler_pass = false;
+            }
             pthread_mutex_unlock(&ctrl->queue_lock);
             clock_gettime(CLOCK_MONOTONIC, &ctrl->last_polled_time);
 
@@ -505,6 +526,9 @@ int start_radios(rdk_dev_mode_type_t mode, unsigned int radio_index)
         ctrl->acs_pending[index] = false;
         if (wifi_radio_oper_param->autoChannelEnabled == true) {
             ctrl->acs_pending[index] = true;
+            wifi_util_info_print(WIFI_CTRL,
+                "%s:%d: ACS pending set radio:%d auto_channel_enabled:%d\n", __func__,
+                __LINE__, index, wifi_radio_oper_param->autoChannelEnabled);
             start_wifi_sched_timer(index, ctrl, wifi_acs_sched); // Starting the acs_scheduler
         }
 
@@ -1370,11 +1394,19 @@ void get_action_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgm
 void channel_change_callback(wifi_channel_change_event_t radio_channel_param)
 {
     wifi_channel_change_event_t channel_change;
+    int enqueue_status;
     memset(&channel_change, 0, sizeof(channel_change));
 
     memcpy(&channel_change, &radio_channel_param, sizeof(wifi_channel_change_event_t));
 
-    push_event_to_ctrl_queue((wifi_channel_change_event_t *)&channel_change, sizeof(wifi_channel_change_event_t), wifi_event_type_hal_ind, wifi_event_hal_channel_change, NULL);
+    enqueue_status = push_event_to_ctrl_queue((wifi_channel_change_event_t *)&channel_change,
+        sizeof(wifi_channel_change_event_t), wifi_event_type_hal_ind,
+        wifi_event_hal_channel_change, NULL);
+    wifi_util_info_print(WIFI_CTRL,
+        "%s:%d: HAL channel event radio:%d event:%d sub_event:%d channel:%d width:%d op_class:%d enqueue_status:%d\n",
+        __func__, __LINE__, channel_change.radioIndex, channel_change.event,
+        channel_change.sub_event, channel_change.channel, channel_change.channelWidth,
+        channel_change.op_class, enqueue_status);
     return;
 }
 
@@ -1395,6 +1427,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     unsigned int i;
     pthread_condattr_t cond_attr;
+    int channel_change_register_status;
 
     ctrl->db_consolidated = (0 == access("/tmp/db_consolidated", F_OK));
 
@@ -1477,7 +1510,10 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     wifi_hal_mgmt_frame_callbacks_register(mgmt_wifi_frame_recv);
 
     /* Register wifi hal channel change events callback */
-    wifi_chan_event_register(channel_change_callback);
+    channel_change_register_status = wifi_chan_event_register(channel_change_callback);
+    wifi_util_info_print(WIFI_CTRL,
+        "%s:%d: HAL channel-change callback registration status:%d\n", __func__, __LINE__,
+        channel_change_register_status);
 
     wifi_wpsEvent_callback_register(wps_event_callback);
 
@@ -1947,6 +1983,7 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     webconfig_send_full_associate_status(ctrl);
     ctrl->exit_ctrl = false;
     ctrl->ctrl_initialized = true;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: ctrl_initialized set true\n", __func__, __LINE__);
     init_ignite_function();
     register_endpoint_components(ctrl);
     ctrl_queue_loop(ctrl);
