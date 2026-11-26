@@ -27,6 +27,8 @@
 #include "wifi_util.h"
 #include "scheduler.h"
 #include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <pthread.h>
 #include "ieee80211.h"
@@ -37,6 +39,7 @@
 #define FILE_SYSTEM_UPTIME         "/tmp/systemUptime.txt"
 #endif
 #define ONEWIFI_FR_FLAG  "/nvram/wifi/onewifi_factory_reset_flag"
+#define WIFI_INIT_DATA_READY_FILE "/tmp/wifi_init_data_ready"
 #include "run_qmgr.h"
 
 unsigned int get_Uptime(void);
@@ -53,9 +56,13 @@ static int run_greylist_event(void *arg);
 static int run_analytics_event(void* arg);
 
 static int switch_dfs_channel(void *arg);
+static void update_wifi_init_data_ready_file(wifi_ctrl_t *ctrl);
+static void remove_wifi_init_data_ready_file(void);
 void start_wifi_sched_timer(unsigned int, struct wifi_ctrl *ctrl, wifi_scheduler_type_t type);
 void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
+    remove_wifi_init_data_ready_file();
+
     if(ctrl->vif_apply_pending_queue != NULL) {
         queue_destroy(ctrl->vif_apply_pending_queue);
     }
@@ -1396,6 +1403,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     unsigned int i;
     pthread_condattr_t cond_attr;
 
+    remove_wifi_init_data_ready_file();
     ctrl->db_consolidated = (0 == access("/tmp/db_consolidated", F_OK));
 
     //Initialize Webconfig Framework
@@ -1947,9 +1955,13 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     webconfig_send_full_associate_status(ctrl);
     ctrl->exit_ctrl = false;
     ctrl->ctrl_initialized = true;
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: ctrl_initialized set true\n", __func__, __LINE__);
+    update_wifi_init_data_ready_file(ctrl);
     init_ignite_function();
     register_endpoint_components(ctrl);
     ctrl_queue_loop(ctrl);
+    remove_wifi_init_data_ready_file();
 
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
     apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL);
@@ -1988,6 +2000,45 @@ bool check_wifi_radio_sched_timeout_active_status(wifi_ctrl_t *l_ctrl)
     }
 
     return false;
+}
+
+static void update_wifi_init_data_ready_file(wifi_ctrl_t *ctrl)
+{
+    unsigned int index;
+    int fd;
+
+    if (ctrl == NULL || !ctrl->ctrl_initialized) {
+        return;
+    }
+
+    for (index = 0; index < getNumberRadios(); index++) {
+        if (ctrl->acs_pending[index] ||
+            ctrl->wifi_sched_id.wifi_radio_sched_handler_id[index] != 0) {
+            return;
+        }
+    }
+
+    fd = open(WIFI_INIT_DATA_READY_FILE, O_CREAT | O_EXCL | O_WRONLY,
+        S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    if (fd < 0) {
+        if (errno != EEXIST) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to create %s errno:%d\n",
+                __func__, __LINE__, WIFI_INIT_DATA_READY_FILE, errno);
+        }
+        return;
+    }
+
+    close(fd);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: created %s\n", __func__, __LINE__,
+        WIFI_INIT_DATA_READY_FILE);
+}
+
+static void remove_wifi_init_data_ready_file(void)
+{
+    if (unlink(WIFI_INIT_DATA_READY_FILE) != 0 && errno != ENOENT) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to remove %s errno:%d\n",
+            __func__, __LINE__, WIFI_INIT_DATA_READY_FILE, errno);
+    }
 }
 
 bool check_wifi_csa_sched_timeout_active_status_of_radio_index(wifi_ctrl_t *l_ctrl, int radio_index)
@@ -2114,6 +2165,7 @@ int wifi_sched_timeout(void *arg)
         l_ctrl->acs_pending[args->index] = false; // Clearing acs_pending flag
     }
 
+    update_wifi_init_data_ready_file(l_ctrl);
     free(args);
     return TIMER_TASK_COMPLETE;
 }
@@ -2269,6 +2321,8 @@ void stop_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_schedul
             l_ctrl->acs_pending[handler_index] = false; // Clearing acs_pending flag
         }
     }
+
+    update_wifi_init_data_ready_file(l_ctrl);
 }
 
 #if defined (FEATURE_SUPPORT_ACL_SELFHEAL)
